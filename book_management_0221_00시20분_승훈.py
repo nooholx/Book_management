@@ -152,5 +152,3 @@ while num != 3:
         account_login()
     else:
         print("프로그램을 종료합니다.")
-
-        ##주석추가
