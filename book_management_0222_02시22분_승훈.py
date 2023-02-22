@@ -19,7 +19,7 @@ def return_rent():  # 도서 반납 함수
     print("[ 도서 반납하기 ]")
     # rent_list 출력하기
     conn = pymysql.connect(  # DB 연결
-        host='127.0.0.1', user='root', password='123456',
+        host='127.0.0.1', user='root', password='tnghcjstk5',
         db='book_management', charset='utf8')
     cursor = conn.cursor()
 
@@ -71,7 +71,7 @@ def book_rent(check_result):  # 장바구니에 있는 목록 출력 후 대여�
     input_bookid = input()
 
     conn = pymysql.connect(  # DB 연결
-        host='127.0.0.1', user='root', password='123456',
+        host='127.0.0.1', user='root', password='tnghcjstk5',
         db='book_management', charset='utf8')
     cursor = conn.cursor()
 
@@ -127,7 +127,7 @@ def book_rent(check_result):  # 장바구니에 있는 목록 출력 후 대여�
 
 def print_cart():  # 장바구니 테이블(cart)을 출력해주는 함수
     conn = pymysql.connect(  # DB 연결
-        host='127.0.0.1', user='root', password='123456',
+        host='127.0.0.1', user='root', password='tnghcjstk5',
         db='book_management', charset='utf8')
     cursor = conn.cursor()
 
@@ -150,7 +150,7 @@ def input_cart(user_bookid):  # cart 테이블에 데이터 넣는 함수
     global cart_id
     check_cart = 0
     conn = pymysql.connect(
-        host='127.0.0.1', user='root', password='123456',
+        host='127.0.0.1', user='root', password='tnghcjstk5',
         db='book_management', charset='utf8')
     cursor = conn.cursor()
 
@@ -230,7 +230,7 @@ def search_author():  # 입력받은 검색어(도서명)가 DB에 있는지 검
     print("검색어를 입력하세요.(저자명)")
     user_author = input()
     conn = pymysql.connect(  # DB 연결
-        host='127.0.0.1', user='root', password='123456',
+        host='127.0.0.1', user='root', password='tnghcjstk5',
         db='book_management', charset='utf8')
     cursor = conn.cursor()
 
@@ -255,7 +255,7 @@ def search_name():  # 입력받은 검색어(도서명)가 DB에 있는지 검�
     print("검색어를 입력하세요.(도서명)")
     user_book = input()
     conn = pymysql.connect(  # DB 연결
-        host='127.0.0.1', user='root', password='123456',
+        host='127.0.0.1', user='root', password='tnghcjstk5',
         db='book_management', charset='utf8')
     cursor = conn.cursor()
 
@@ -342,7 +342,7 @@ def check_ID(input_id):  # 사용자에게 입력받은 input_id가 DB에 있는
     while check != 1:
 
         conn = pymysql.connect(   # DB 연결
-            host='127.0.0.1', user='root', password='123456',
+            host='127.0.0.1', user='root', password='tnghcjstk5',
             db='book_management', charset='utf8')
         cursor = conn.cursor()
 
@@ -389,7 +389,7 @@ def join_member():   # 회원가입하는 함수
     while check != 1:
 
         conn = pymysql.connect(  # DB 연결
-            host='127.0.0.1', user='root', password='123456',
+            host='127.0.0.1', user='root', password='tnghcjstk5',
             db='book_management', charset='utf8')
         cursor = conn.cursor()
 
