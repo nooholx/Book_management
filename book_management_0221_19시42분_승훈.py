@@ -14,61 +14,73 @@ check_result = []
 cart_id = 1
 rent_id = 1
 
+
 def book_rent(check_result):  # 장바구니에 있는 목록 출력 후 대여여부 선택하기
-    # 매개변수 check_result는 현재 로그인된 cust의 정보가 담겨있음
+    # 매개변수 check_result는 현재 로그인된 cust의 정보가 담겨 있음(check_ID(), check_PWD()함수 참고)
     global rent_id
+
+    print_cart()  # 장바구니 목록 출력해주는 함수 호출
     print("대여할 도서의 등록번호를 입력하세요 : ")
     input_bookid = input()
 
     conn = pymysql.connect(  # DB 연결
-        host='127.0.0.1', user='root', password='123456',
+        host='127.0.0.1', user='root', password='tnghcjstk5',
         db='book_management', charset='utf8')
     cursor = conn.cursor()
 
+    # rent_list에 데이터 넣기 위해서 book_list에서 가져올 수 있는 col명들 select
     sql = '''    
             SELECT book_num, lib_name, book_name, author, publisher, borrow
             FROM book_list
             WHERE book_num LIKE CONCAT(%s)
             '''
-    cursor.execute(sql)
+    cursor.execute(sql, (input_bookid))
     result = cursor.fetchone()
 
+    # rent_id 길이 구하기
+    sql2 = '''    
+            SELECT rent_id
+            FROM rent_list
+            '''
+    cursor.execute(sql2)
+    rent_id = len(cursor.fetchall()) + 1
+    print(rent_id)
+
     # rent_list에 대여한 책에 대한 내용 insert하기
-    sql2 = '''
+    sql3 = '''
             INSERT INTO rent_list (rent_id, book_num, lib_name, book_name, cust_id,
             author, publisher, rent_date, return_date)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW()+5 )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), DATE_ADD(NOW(), INTERVAL 5 DAY))
             '''
 
     # rent_list 테이블에서 rent_date, return_date =>  db에서 DATE로 바꿔줘야함
-    cursor.execute(sql2, (rent_id, result[0], result[1], result[2], check_result[0],
+    cursor.execute(sql3, (rent_id, result[0], result[1], result[2], check_result[0],
                           result[3], result[4]))
     conn.commit()
-    rent_id += 1
 
-    # rent_list에 대여내용 넣었다면 대여불가능하도록 N으로 바꿔주기
-    sql3 = '''
+
+    # rent_list에 대여내용 넣었다면 book_list의 borrow열을 N으로 바꿔주기(대여 불가능하도록)
+    sql4 = '''
             UPDATE book_list SET
             borrow = %s WHERE book_num = %s
             '''
-    cursor.execute(sql3, ('N', result[5]))
+    cursor.execute(sql4, ('N', (input_bookid)))
     conn.commit()
 
     # cart에서 삭제하기
-
-    sql4 = '''
+    sql5 = '''
            DELETE FROM cart 
            WHERE book_num = %s
             '''
-    cursor.execute(sql4, (result[0]))  # result[0] = book_num
+    cursor.execute(sql5, (result[0]))  # result[0] = book_num
     conn.commit()
 
     cursor.close()
     conn.close()
 
-def print_cart():
+def print_cart():  # 장바구니 테이블(cart)을 출력해주는 함수
     conn = pymysql.connect(  # DB 연결
-        host='127.0.0.1', user='root', password='123456',
+        host='127.0.0.1', user='root', password='tnghcjstk5',
         db='book_management', charset='utf8')
     cursor = conn.cursor()
 
@@ -77,8 +89,9 @@ def print_cart():
           FROM cart
           '''
     cursor.execute(sql)
-    result = cursor.fetchone()
+    result = cursor.fetchall()
 
+    print(f"[ 장바구니 ]")
     for i in range(len(result)):
         print(result[i], end='\n')
 
@@ -86,96 +99,69 @@ def print_cart():
     conn.close()
 
 
-def input_cart(user_bookid):
+def input_cart(user_bookid):  # cart 테이블에 데이터 넣는 함수
     global cart_id
     conn = pymysql.connect(
-        host='127.0.0.1', user='root', password='123456',
+        host='127.0.0.1', user='root', password='tnghcjstk5',
         db='book_management', charset='utf8')
     cursor = conn.cursor()
 
+    # book_list 테이블에 user가 입력한 등록번호(매개변수로 전달 받은 user_bookid)가 있는지 확인하는 쿼리문
     sql = '''
-            SELECT book_num, borrow
+            SELECT book_num, borrow, book_name, author
             FROM book_list
             WHERE book_num LIKE CONCAT(%s)
             '''
     cursor.execute(sql, (user_bookid))
-    result = cursor.fetchone()
+    result = cursor.fetchall()
+    print(result)
 
-    if result == ():
+    # 등록번호가 book_list에 없을 때
+    if result == None:
         print("소장 자료가 없습니다.")
         cursor.close()
         conn.close()
-        return
 
-    print(result, result[0], result[1])
 
-    if result[1].strip() == 'Y':  # Strip the '\r' character
-        print("대여가능")
+    # 장바구니(cart)에 등록해놓고 아직 대여하기 전에 또 cart에 동일 책 등록하는 경우를 막기 위함(아직 대여 안했으니까 borrow가 Y라서)
+    sql2 = '''
+        SELECT book_num
+        FROM cart
+        WHERE book_num LIKE CONCAT(%s)
+        '''
+    cursor.execute(sql2, (user_bookid))
+    result2 = cursor.fetchall()
 
+    if result2 != ():
+        print("이미 장바구니에 담긴 도서입니다.")
+
+    elif result2 == () and result[1].strip() == 'Y':
         sql3 = '''
-                SELECT cart_id 
-                FROM cart
-                       '''
-        cursor.execute(sql3)
-        result2 = cursor.fetchall()
-        cart_id = len(result2) + 1
-        print(cart_id)
-
-
-        sql2 = '''
-                INSERT INTO cart (cart_id, book_num)
-                VALUES (%s, %s)
+              SELECT cart_id 
+              FROM cart
               '''
-        cursor.execute(sql2, (cart_id, result[0]))
+        cursor.execute(sql3)
+        result3 = cursor.fetchall()
+        cart_id = len(result3) + 1  # cart 테이블에 데이터가 있는 경우 데이터 수 + 1번에 insert하기 위해서
+        # print(cart_id)  # 확인용임
+
+        # cart 테이블에 장바구니에 담을 책 정보를 추가
+        sql4 = '''
+                INSERT INTO cart (cart_id, book_num, book_name, author)
+                VALUES (%s, %s, %s, %s)
+                '''
+        cursor.execute(sql4, (cart_id, result[0], result[2], result[3]))
         conn.commit()
+        print(f"등록번호 {result[0]} 도서가 장바구니에 추가되었습니다. ")
 
-
-
+        # borrow가 Y가 아닐 때 => 즉, 대여 불가능 할 때
     else:
-        print("이미 대출된 도서입니다.")
+        print("잘못된 입력입니다.")
 
     cursor.close()
     conn.close()
 
 
-# def input_cart(user_bookid):  # book_list에서 조회를 해서 값을 cart테이블에 담기
-#     global cart_id
-#     conn = pymysql.connect(  # DB 연결
-#         host='127.0.0.1', user='root', password='123456',
-#         db='book_management', charset='utf8')
-#     cursor = conn.cursor()
-#
-#     sql = '''
-#             SELECT book_num, borrow
-#             FROM book_list
-#             WHERE book_num LIKE CONCAT(%s)
-#             '''
-#     cursor.execute(sql, (user_bookid))
-#     result = cursor.fetchone()
-#
-#     if result == ():
-#         print("소장 자료가 없습니다.")
-#         cursor.close()
-#         conn.close()
-#
-#     print(result, result[0], result[1])  # ('JM0000068927', 'Y\r') JM0000068927 Y
-#
-#     if result[1] == 'Y':
-#         print("대여가능")
-#         sql2 = '''
-#                 INSERT INTO cart (cart_id, book_num)
-#                 VALUES (%s, %s)
-#               '''
-#         cursor.execute(sql2, (cart_id, result[0]))
-#         conn.commit()
-#
-#         cart_id += 1
-#
-#     else:
-#         print("이미 대출된 도서입니다.")
-#
-#     cursor.close()
-#     conn.close()
 def print_rent():  # 도서를 대여하는 함수 호출
 
     rent_user_num = 0
@@ -189,28 +175,34 @@ def print_rent():  # 도서를 대여하는 함수 호출
         rent_user_num = int(input())
 
         if rent_user_num == 1:
-            print("도서명으로 검색")
+            print("[ 도서명으로 검색 ]")
             search_name()  # 도서명 조회 함수 호출
             print("도서를 장바구니에 담으시겠습니까? ( Y / N ) : ")
             user_input = input()
             if user_input == 'Y':
                 user_bookid = input("등록번호를 입력하세요 : ")
                 input_cart(user_bookid)
-                # book_rent()
-            elif user_input == 'N':
-                print("도서대여 화면으로 돌아갑니다.")
+                print("도서를 대여하시겠습니까? ( Y / N ) : ")
+                user_input2 = input()
+                if user_input2 == 'Y':
+                    book_rent(check_result)
+                else:
+                    print("도서대여 화면으로 돌아갑니다.")
 
         elif rent_user_num == 2:
-            print("저자명으로 검색")
+            print("[ 저자명으로 검색 ]")
             search_author()  # 저자명 조회 함수 호출
             print("도서를 장바구니에 담으시겠습니까? ( Y / N ) : ")
             user_input = input()
             if user_input == 'Y':
                 user_bookid = input("등록번호를 입력하세요 : ")
                 input_cart(user_bookid)
-                # book_rent()
-            elif user_input == 'N':
-                print("도서대여 화면으로 돌아갑니다.")
+                print("도서를 대여하시겠습니까? ( Y / N ) : ")
+                user_input2 = input()
+                if user_input2 == 'Y':
+                    book_rent(check_result)
+                else:
+                    print("도서대여 화면으로 돌아갑니다.")
         else:
             print("메인화면으로 돌아갑니다.")
             break
@@ -219,7 +211,7 @@ def search_author():  # 입력받은 검색어(도서명)가 DB에 있는지 검
     print("검색어를 입력하세요.(저자명)")
     user_author = input()
     conn = pymysql.connect(  # DB 연결
-        host='127.0.0.1', user='root', password='123456',
+        host='127.0.0.1', user='root', password='tnghcjstk5',
         db='book_management', charset='utf8')
     cursor = conn.cursor()
 
@@ -244,11 +236,11 @@ def search_name():  # 입력받은 검색어(도서명)가 DB에 있는지 검�
     print("검색어를 입력하세요.(도서명)")
     user_book = input()
     conn = pymysql.connect(  # DB 연결
-        host='127.0.0.1', user='root', password='123456',
+        host='127.0.0.1', user='root', password='tnghcjstk5',
         db='book_management', charset='utf8')
     cursor = conn.cursor()
 
-    sql = '''
+    sql = ''' 
         SELECT book_id, lib_name, ref_lib, book_num, book_name, borrow
         FROM book_list
         WHERE book_name LIKE CONCAT('%%', %s, '%%')
@@ -256,10 +248,12 @@ def search_name():  # 입력받은 검색어(도서명)가 DB에 있는지 검�
     cursor.execute(sql, (user_book))
     result = cursor.fetchall()
 
+    # 입력받은 도서명이 DB에 있을 때
     for i in range(len(result)):
         print(result[i], end='\n')
 
-    if result == ():
+    # 입력받은 도셔명이 DB에 없을 때
+    if result == ():  # cursor.fetchall()이 찾지 못하면 출력결과가 '()'로 출력되기 떄문에.
         print("소장 자료가 없습니다.")
 
     cursor.close()
@@ -316,6 +310,7 @@ def check_PWD(input_id, input_pwd, check_result):  # 비밀번호 일치여부�
     if check_result[0] == input_id and check_result[1] == input_pwd:
         print("로그인 되었습니다.")
         print_main()  # 로그인 성공시 메인 메뉴 출력
+        return check_result
     else:
         print(f"아이디 또는 비밀번호가 일치하지 않습니다.")
 
@@ -327,7 +322,7 @@ def check_ID(input_id):  # 사용자에게 입력받은 input_id가 DB에 있는
     while check != 1:
 
         conn = pymysql.connect(   # DB 연결
-            host='127.0.0.1', user='root', password='123456',
+            host='127.0.0.1', user='root', password='tnghcjstk5',
             db='book_management', charset='utf8')
         cursor = conn.cursor()
 
@@ -374,7 +369,7 @@ def join_member():   # 회원가입하는 함수
     while check != 1:
 
         conn = pymysql.connect(  # DB 연결
-            host='127.0.0.1', user='root', password='123456',
+            host='127.0.0.1', user='root', password='tnghcjstk5',
             db='book_management', charset='utf8')
         cursor = conn.cursor()
 
