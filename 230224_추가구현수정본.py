@@ -1,27 +1,6 @@
-# 2023. 02. 23. 목요일 10:20분  - 중간저장
-
-# (이전) 대여 가능 권수 5권으로 제한하는 기능 완료
-# (이전) cart 수정 => 각종 에러, borrow 출력
-# (이전) 대여 수정
-# (이전) 반납 수정
-# (추가) 도서반납할 때 rent_list가 있을 때, 없을 때를 구분해주기   => 완료(02.23.목, 9:30)
-# (추가) 대여목록에 데이터가 없을 때에도 등록번호 입력하라고 뜨는 거 예외처리 해줘야 함 => 완료(02.23.목, 9:30)
-# (추가) 장바구니 조회하기 메뉴도 따로 만들기 => 완료(02.23.목, 09:53)
-# (추가) 반납하고 어떤 책 반납했는지 한번 더 문구 띄워주기  => 완료(02.23.목, 9:45)
-# (추가) datetime 날짜만 나오게 하기 =>  완료(02.23.목, 11:20)
-
-
-# 더 구현할 것 :
-# 2. 콘솔 UI 예쁘게 꾸미기 (준영님) / 나도 해보기
-# 3. 숫자 입력할때 '1.' 이런식으로 '.'(기호)가 들어갔을 경우 valueERROR 예외처리하기(현재 출력값 그대로 보이게)
-
-
-# 이상적인 방법(시간 남을 경우 구현) :
-# 1. 장바구니에 트리거를 걸지 않고 rent_list에 걸어서 한 아이디당 5권 이상 대여할 수 없게 처리해야함. (현재는 애초에 장바구니에서 5권 이상 못담게 만들었음)
-
-
 # 트리거 생성은 heidisql에서
-# 트리거 생성 쿼리문!
+
+# cart 트리거 생성 쿼리문!
 # DELIMITER //
 # CREATE TRIGGER max_rows_trigger
 # BEFORE INSERT ON cart
@@ -32,6 +11,17 @@
 #   IF num_rows >= 5 THEN
 #     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Maximum number of rows reached';
 #   END IF;
+# END //
+# DELIMITER ;
+
+# rent_list 트리거 생성 쿼리문
+# DELIMITER //
+# CREATE TRIGGER update_borrow
+# AFTER DELETE ON rent_list
+# FOR EACH ROW
+# BEGIN
+# UPDATE book_list SET borrow ='Y'
+# WHERE book_num = OLD.book_num;
 # END //
 # DELIMITER ;
 
@@ -75,10 +65,15 @@ import unicodedata  # 한글이 포함된 문자열에 간격 맞추기 솔루�
 
 num = 0
 promt = """
-1. 회원가입
-2. 로그인
-3. 종료
-Enter number: """
+===========================================
+ 어서오세요. 광산구 도서관 도서관리 프로그램입니다
+===========================================
+         원하시는 번호를 눌러주세요
+              1. 회원가입
+              2. 로그인
+              3. 종료
+===========================================
+입력: """
 
 cust_info = []
 check_result = []
@@ -98,7 +93,7 @@ def return_rent():  # 도서 반납 함수
 
     # SUBSTR(book_name, 1, 30) as sub_bk_name,
     # SUBSTR(author, 1, 30) as sub_bk_author,
-    # 수정중
+
     sql = '''    
         SELECT rent_id,
                book_num,
@@ -117,8 +112,11 @@ def return_rent():  # 도서 반납 함수
         print("반납할 도서가 없습니다.")
         return
 
+    print('(등록번호, 소장도서관, 책이름, 지은이, 출판사, 대여가능여부)')
+
     for i in range(len(result)):
         print(result[i], end='\n')
+
     # strFormat = '%-10s%-20s%-20s%-10s%-10s%-10s%-10s\n'
     # strOut = strFormat % (
     # preFormat('대여번호', 0), preFormat('등록번호', 0), preFormat('도서관명', 0), preFormat('도서명', 50), preFormat('저자', 45)
@@ -138,8 +136,7 @@ def return_rent():  # 도서 반납 함수
     #     ,preFormat(result[i][4], 50), preFormat(result[i][5].strftime("%Y-%m-%d"), 10), preFormat(result[i][6].strftime("%Y-%m-%d"), 10)))
     # #     # print(result[i], end='\n')
 
-    print("반납할 도서의 등록번호를 입력하세요 : ")
-    user_id = input()
+    user_id = input("반납할 도서의 등록번호를 입력하세요: ")
 
     for i in range(len(result)):
         if user_id == result[i][1]:
@@ -177,8 +174,7 @@ def book_rent(check_result):  # 장바구니에 있는 목록 출력 후 대여�
     if cart_check == -1:
         return
 
-    print("대여할 도서의 등록번호를 입력하세요 : ")
-    input_bookid = input()
+    input_bookid = input("대여할 도서의 등록번호를 입력하세요: ")
 
     conn = pymysql.connect(  # DB 연결
         host='127.0.0.1', user='root', password='123456',
@@ -186,75 +182,19 @@ def book_rent(check_result):  # 장바구니에 있는 목록 출력 후 대여�
     cursor = conn.cursor()
 
 
-    test_sql = f'''
+    count_sql = f'''
                 SELECT cust_id, count(*) as count
                 FROM rent_list
                 WHERE rent_list.cust_id like ('{(check_result[0])}')
                 GROUP BY cust_id
                '''
-    cursor.execute(test_sql)
-    test_result = cursor.fetchall()
+    cursor.execute(count_sql)
+    count_result = cursor.fetchall()
+    # print(test_result)
 
-
-    print(test_result)
-    if test_result == ():
-        sql = '''    
-                        SELECT book_num, lib_name, book_name, author, publisher, borrow
-                        FROM book_list
-                        WHERE book_num LIKE CONCAT(%s)
-                        '''
-        cursor.execute(sql, (input_bookid))
-        result = cursor.fetchone()
-
-        # rent_id 길이 구하기
-        sql2 = '''    
-                        SELECT rent_id
-                        FROM rent_list
-                        '''
-        cursor.execute(sql2)
-        rent_id = len(cursor.fetchall()) + 1
-        # print(rent_id)
-
-        try:
-
-            sql3 = '''
-                            INSERT INTO rent_list (rent_id, book_num, lib_name, book_name, cust_id,
-                            author, publisher, rent_date, return_date)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), DATE_ADD(NOW(), INTERVAL 5 DAY))
-                            '''
-
-            cursor.execute(sql3, (rent_id, result[0], result[1], result[2], check_result[0],
-                                  result[3], result[4]))
-            conn.commit()
-
-            # rent_list에 대여내용 넣었다면 book_list의 borrow열을 N으로 바꿔주기(대여 불가능하도록)
-            sql4 = '''
-                                UPDATE book_list SET
-                                borrow = %s WHERE book_num = %s
-                                '''
-            cursor.execute(sql4, ('N', (input_bookid)))
-            conn.commit()
-
-            # cart에서 삭제하기
-            sql5 = '''
-                               DELETE FROM cart 
-                               WHERE book_num = %s
-                                '''
-            cursor.execute(sql5, (result[0]))  # result[0] = book_num
-            conn.commit()
-
-        except Exception as err:
-            if err.args[0] == 1062:
-                print("이미 대여한 등록번호입니다. 다른 책을 대여해주세요.")
-            else:
-                print("해당 등록번호를 찾을 수 없습니다.")
-
-        finally:
-            conn.commit()
-            cursor.close()
-            conn.close()
-
-    elif test_result[0][1] <= 5:
+    # cust_id별로 5권 이상 대여할 수 없도록 하는 기능 구현
+    # 대여목록이 0개 ~ 5개까지일 때 작동함
+    if count_result == () or count_result[0][1] <= 4:
 
         # rent_list에 데이터 넣기 위해서 book_list에서 가져올 수 있는 col명들 select
         sql = '''    
@@ -343,229 +283,247 @@ def print_cart():  # 장바구니 테이블(cart)을 출력해주는 함수
 
 
 def print_rent():  # 도서를 대여하는 함수 호출         ##
+    try:
 
-    rent_user_num = 0
+        rent_user_num = 0
 
-    while rent_user_num != 3:
-        print("[ 도서대여 ]")
-        print("1. 대여하기")
-        print("2. 뒤로가기")
+        while rent_user_num != 3:
+            print("-----------------------------")
+            print("     [ 도서대여 ]")
+            print("")
+            print("     1. 대여하기")
+            print("     2. 뒤로가기")
+            print("")
+            print("-----------------------------")
 
-        rent_user_num = int(input("Enter number: "))
+            rent_user_num = int(input("입력: "))
 
-        if rent_user_num == 1:
-            book_rent(check_result)
-
-        else:
-            print("메인화면으로 돌아갑니다.")
-            break
-
-
-############################################################################################################
-############################################################################################################
-# 내가짠 도서 조회함수
-
-def print_search():
-    while True:
-
-        print("[ 소장자료 검색 ]")
-        print("1. 도서명으로 검색")
-        print("2. 저자명으로 검색")
-        print("3. 찾으신도서의 등록번호를 직접입력하시오")
-        print("4. 뒤로가기")
-
-        book_list_num = int(input())
-
-        if book_list_num == 1:  ##도서명으로 검색
-
-            conn = pymysql.connect(  # DB 연결
-                host='127.0.0.1', user='root', password='123456',
-                db='book_management', charset='utf8')
-            cursor = conn.cursor()
-
-            print("도서명검색을 선택하였습니다. (도서를 찾으셨으면, 초기화면의 3번으로 가서 조회하세요)")
-
-            input_book_name = input("도서명을 입력하세요: ")
-
-            sql = '''
-                SELECT book_id, lib_name, ref_lib, book_num, book_name, author, publisher, borrow 
-                FROM book_list 
-                WHERE book_name
-                LIKE CONCAT('%%', %s, '%%')
-                '''
-            cursor.execute(sql, (input_book_name,))  # 위의 sql 구문을 실행하기
-
-            result = cursor.fetchall()
-
-            if result == ():
-                print("해당 도서명을 찾을 수 없습니다.")
-                continue
-
-            print('(연번, 소장도서관, 자료실명, 등록번호, 책이름, 지은이, 출판사, 대여가능여부)')
-
-            for i in range(len(result)):
-                print(result[i], end='\n')
-
-            cursor.close()
-            conn.close()
-
-
-
-
-        elif book_list_num == 2:  ##저자명 검색
-
-            conn = pymysql.connect(  # DB 연결
-
-                host='127.0.0.1', user='root', password='123456',
-
-                db='book_management', charset='utf8')
-
-            cursor = conn.cursor()
-
-            print("저자명검색을 선택하였습니다.(도서를 찾으셨으면, 초기화면의 3번으로 가서 조회하세요)")
-
-            input_author = input("저자명을 입력하세요: ")
-
-            sql = '''
-                    SELECT book_id, lib_name, ref_lib, book_num, book_name, author, publisher, borrow
-                    FROM book_list
-                    WHERE author 
-                    LIKE CONCAT('%%', %s, '%%')
-                    '''
-
-            cursor.execute(sql, (input_author,))  # 위의 sql 구문을 실행하기
-            result = cursor.fetchall()
-
-            if result == ():
-                print("해당 저자명을 찾을 수 없습니다.")
-                continue
-
-            print('(연번, 소장도서관, 자료실명, 등록번호, 책이름, 지은이, 출판사, 대여가능여부)')
-            for i in range(len(result)):
-                print(result[i], end='\n')
-
-            cursor.close()
-            conn.close()
-
-
-
-
-
-        elif book_list_num == 3:  ##등록번호로 검색
-
-            conn = pymysql.connect(  # DB 연결
-
-                host='127.0.0.1', user='root', password='123456',
-
-                db='book_management', charset='utf8')
-
-            cursor = conn.cursor()
-
-            print("등록번호검색을 선택하였습니다.")
-
-            input_author = input("등록번호를 입력하세요: ")
-
-            sql = '''
-                     SELECT book_id, lib_name, ref_lib, book_num, book_name, author, publisher, borrow 
-                     FROM book_list 
-                     WHERE book_num 
-                     LIKE CONCAT(%s)
-                     '''
-
-            cursor.execute(sql, (input_author))  # 위의 sql 구문을 실행하기
-
-            result = cursor.fetchall()
-
-            if result == ():
-                print("해당 등록번호를 찾을 수 없습니다.")
-                continue
-
-            cursor.close()
-            conn.close()
-
-            print('(연번, 소장도서관, 자료실명, 등록번호, 책이름, 지은이, 출판사, 대여가능여부)')
-            print(result)
-
-            cart = input("장바구니에 넣겠습니까? 1.예 2.아니요 : ")
-
-            # print(result[0][7])
-            if result[0][7] == 'N':
-                print("현재 대여중인 도서입니다.")
+            if rent_user_num == 1:
+                book_rent(check_result)
+            elif rent_user_num == 2:
+                print("메인화면으로 돌아갑니다.")
                 return
 
-            if int(cart) == 1:  # borrow가 Y일 때만 카트에 담을 수 있음. 대여 중인데 또 카트에 넣어지는 에러해결
-                try:
-                    conn = pymysql.connect(
-                        host='127.0.0.1', user='root', password='123456',
-                        db='book_management', charset='utf8'
-                    )
-                    cursor = conn.cursor()
-                    sql = '''
-                        INSERT INTO cart (book_num, book_name, author)
-                        VALUES (%s,%s,%s)
-                        '''
-                    print(result)
+    except (ValueError, TypeError) as error:
+        print('올바르지 않은 입력입니다. 다시 입력해 주세요.')
 
-                    cursor.execute(sql, (result[0][3], result[0][4], result[0][5]))
+    else:
+        print("잘못된 입력입니다. 1~2의 숫자를 입력해주세요.")
 
 
-                except Exception as err:
-                    if err.args[0] == 1062:
-                        print("중복된 등록번호입니다. 다른 책을 장바구니에 넣어주세요")
-                    if err.args[0] == 1644:
-                        print("대여 가능한 권수를 초과하였습니다. (1인 최대 5권 대여 가능)")
-                    # else:
-                    #     print(err)
+
+def print_search():
+    try:
+        while True:
+
+            print("-----------------------------")
+            print("      「 소장자료 검색 」")
+            print("     1. 도서명으로 검색")
+            print("     2. 저자명으로 검색")
+            print("     3. 장바구니 담기\n        (등록번호 입력)")
+            print("     4. 뒤로가기")
+            print("-----------------------------")
+            book_list_num = int(input("입력: "))
+
+            if book_list_num == 1:  ##도서명으로 검색
+
+                conn = pymysql.connect(  # DB 연결
+                    host='127.0.0.1', user='root', password='123456',
+                    db='book_management', charset='utf8')
+                cursor = conn.cursor()
+
+                print("도서명검색을 선택하였습니다. (도서를 찾으셨으면, 초기화면의 3번으로 가서 조회하세요)")
+
+                input_book_name = input("도서명을 입력하세요: ")
+
+                sql = '''
+                    SELECT book_id, lib_name, ref_lib, book_num, book_name, author, publisher, borrow 
+                    FROM book_list 
+                    WHERE book_name
+                    LIKE CONCAT('%%', %s, '%%')
+                    '''
+                cursor.execute(sql, (input_book_name,))  # 위의 sql 구문을 실행하기
+
+                result = cursor.fetchall()
+
+                if result == ():
+                    print("해당 도서명을 찾을 수 없습니다.")
                     continue
 
-                finally:
-                    conn.commit()
-                    cursor.close()
-                    conn.close()
+                print('(연번, 소장도서관, 자료실명, 등록번호, 책이름, 지은이, 출판사, 대여가능여부)')
+
+                for i in range(len(result)):
+                    print(result[i], end='\n')
+
+                cursor.close()
+                conn.close()
+
+
+            elif book_list_num == 2:  ##저자명 검색
+
+                conn = pymysql.connect(  # DB 연결
+
+                    host='127.0.0.1', user='root', password='123456',
+
+                    db='book_management', charset='utf8')
+
+                cursor = conn.cursor()
+
+                print("저자명검색을 선택하였습니다.(도서를 찾으셨으면, 초기화면의 3번으로 가서 조회하세요)")
+
+                input_author = input("저자명을 입력하세요: ")
+
+                sql = '''
+                        SELECT book_id, lib_name, ref_lib, book_num, book_name, author, publisher, borrow
+                        FROM book_list
+                        WHERE author 
+                        LIKE CONCAT('%%', %s, '%%')
+                        '''
+
+                cursor.execute(sql, (input_author,))  # 위의 sql 구문을 실행하기
+                result = cursor.fetchall()
+
+                if result == ():
+                    print("해당 저자명을 찾을 수 없습니다.")
+                    continue
+
+                print('(연번, 소장도서관, 자료실명, 등록번호, 책이름, 지은이, 출판사, 대여가능여부)')
+                for i in range(len(result)):
+                    print(result[i], end='\n')
+
+                cursor.close()
+                conn.close()
+
+
+            elif book_list_num == 3:  ##등록번호로 검색
+
+                conn = pymysql.connect(  # DB 연결
+
+                    host='127.0.0.1', user='root', password='123456',
+
+                    db='book_management', charset='utf8')
+
+                cursor = conn.cursor()
+
+                print("등록번호검색을 선택하였습니다.")
+
+                input_author = input("등록번호를 입력하세요: ")
+
+                sql = '''
+                         SELECT book_id, lib_name, ref_lib, book_num, book_name, author, publisher, borrow 
+                         FROM book_list 
+                         WHERE book_num 
+                         LIKE CONCAT(%s)
+                         '''
+
+                cursor.execute(sql, (input_author))  # 위의 sql 구문을 실행하기
+
+                result = cursor.fetchall()
+
+                if result == ():
+                    print("해당 등록번호를 찾을 수 없습니다.")
+                    continue
+
+                cursor.close()
+                conn.close()
+
+                print('(연번, 소장도서관, 자료실명, 등록번호, 책이름, 지은이, 출판사, 대여가능여부)')
+                print(result)
+
+                cart = input("장바구니에 넣겠습니까? 1.예 2.아니요 : ")
+
+                # print(result[0][7])
+                if result[0][7] == 'N':
+                    print("현재 대여중인 도서입니다.")
+                    return
+
+                if int(cart) == 1:  # borrow가 Y일 때만 카트에 담을 수 있음. 대여 중인데 또 카트에 넣어지는 에러해결
+                    try:
+                        conn = pymysql.connect(
+                            host='127.0.0.1', user='root', password='123456',
+                            db='book_management', charset='utf8'
+                        )
+                        cursor = conn.cursor()
+                        sql = '''
+                            INSERT INTO cart (book_num, book_name, author, cust_id)
+                            VALUES (%s,%s,%s,%s)
+                            '''
+                        print(result)
+
+                        cursor.execute(sql, (result[0][3], result[0][4], result[0][5], check_result[0]))
+
+
+                    except Exception as err:
+                        if err.args[0] == 1062:
+                            print("중복된 등록번호입니다. 다른 책을 장바구니에 넣어주세요")
+                        if err.args[0] == 1644:
+                            print("대여 가능한 권수를 초과하였습니다. (1인 최대 5권 대여 가능)")
+                        # else:
+                        #     print(err)
+                        continue
+
+                    finally:
+                        conn.commit()
+                        cursor.close()
+                        conn.close()
+                else:
+                    continue
+
+
+            elif book_list_num == 4:
+                print("메인메뉴로 돌아가기")
+                break
+
             else:
-                continue
+                print('잘못 입력하였습니다. 1~4사이의 수를 입력하세요')
 
+    except (ValueError, TypeError) as error:
+        print('올바르지 않은 입력입니다. 다시 입력해 주세요.')
 
-        elif book_list_num == 4:
-            print("메인메뉴로 돌아가기")
-            break
-
-        else:
-            print('잘못 입력하였습니다. 1~4사이의 수를 입력하세요')
-
-
-############################################################################################################
-############################################################################################################
-
+    else:
+        if num == 4:
+            print("뒤로 돌아갑니다.")
+            return
 
 def print_main():  # 메인 메뉴 출력 함수
-    main_user_num = 0
+    try:
+        main_user_num = 0
 
-    while main_user_num != 5:
+        while main_user_num != 5:
 
-        print("1. 도서조회")
-        print("2. 도서대여")
-        print("3. 도서반납")
-        print("4. 장바구니 조회")
-        print("5. 뒤로가기")
-        print("Enter number: ")
+            print("원하시는 메뉴를 선택하세요")
+            print("-----------------------------")
+            print("      도서 메뉴")
+            print("     1. 도서조회")
+            print("     2. 도서대여")
+            print("     3. 도서반납")
+            print("     4. 장바구니")
+            print("     5. 뒤로가기")
+            print("-----------------------------")
 
-        main_user_num = int(input())
+            main_user_num = int(input("입력: "))
 
-        if main_user_num == 1:
-            print("도서조회")
-            print_search()  # 도서조회 메뉴 출력 함수 호출
-        elif main_user_num == 2:
-            print("도서대여")
-            print_rent()
-        elif main_user_num == 3:
-            print("도서반납")
-            return_rent()
-        elif main_user_num == 4:
-            print_cart()
-        else:
+            if main_user_num == 1:
+                print("도서조회를 선택하였습니다")
+                print_search()  # 도서조회 메뉴 출력 함수 호출
+            elif main_user_num == 2:
+                print("도서대여를 선택하였습니다")
+                print_rent()
+            elif main_user_num == 3:
+                print("도서반납을 선택하였습니다")
+                return_rent()
+            elif main_user_num == 4:
+                print("장바구니를 확인합니다")
+                print_cart()
+            else:
+                print("잘못된 입력입니다. 1~5의 숫자를 입력해주세요.")
+    except (ValueError, TypeError) as error:
+        print('올바르지 않은 입력입니다. 로그아웃 되었습니다.')
+
+    else:
+        if num == 5:
             print("로그아웃 되었습니다.")
-            break
+            return
 
 
 def check_PWD(input_id, input_pwd, check_result):  # 비밀번호 일치여부를 확인하는 함수 (매개변수로는 사용자가 입력한 id, pw, check_id()의 리턴값)
@@ -611,6 +569,7 @@ def check_ID(input_id):  # 사용자에게 입력받은 input_id가 DB에 있는
 
 
 def account_login():  # 계정 로그인을 위한 함수
+    print("[ 로그인 ]")
     print(f"id를 입력하세요 : ")
     input_id = input()  # user에게 id 입력받음
     print(f"pw를 입력하세요 : ")
@@ -674,15 +633,21 @@ def join_member():  # 회원가입하는 함수
 
 while num != 3:
 
-    print(promt)
-    num = int(input())
+    try:
+        print(promt)
+        num = int(input())
+        if num == 1:
+            join_member()
+        elif num == 2:
+            account_login()
+        else:
+            print("잘못된 입력입니다. 1~3의 숫자를 입력해주세요.")
 
-    if num == 1:
-        print("회원가입하기")
-        join_member()
-    elif num == 2:
-        print("로그인")
-        account_login()
+    except (ValueError, TypeError) as error:
+        print('올바르지 않은 입력입니다. 다시 입력해 주세요.')
+        continue
+
     else:
-        print("프로그램을 종료합니다.")
-        break
+        if num == 3:
+            print("프로그램을 종료합니다.")
+            break
