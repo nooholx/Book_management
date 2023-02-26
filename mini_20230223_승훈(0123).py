@@ -1,3 +1,25 @@
+<<<<<<< HEAD
+# 2023. 02. 23. 목요일 10:20분  - 중간저장
+
+# (이전) 대여 가능 권수 5권으로 제한하는 기능 완료
+# (이전) cart 수정 => 각종 에러, borrow 출력
+# (이전) 대여 수정
+# (이전) 반납 수정
+# (추가) 도서반납할 때 rent_list가 있을 때, 없을 때를 구분해주기   => 완료(02.23.목, 9:30)
+# (추가) 대여목록에 데이터가 없을 때에도 등록번호 입력하라고 뜨는 거 예외처리 해줘야 함 => 완료(02.23.목, 9:30)
+# (추가) 장바구니 조회하기 메뉴도 따로 만들기 => 완료(02.23.목, 09:53)
+# (추가) 반납하고 어떤 책 반납했는지 한번 더 문구 띄워주기  => 완료(02.23.목, 9:45)
+# (추가) datetime 날짜만 나오게 하기 =>  완료(02.23.목, 11:20)
+
+
+# 더 구현할 것 :
+# 2. 콘솔 UI 예쁘게 꾸미기 (준영님) / 나도 해보기
+# 3. 숫자 입력할때 '1.' 이런식으로 '.'(기호)가 들어갔을 경우 valueERROR 예외처리하기(현재 출력값 그대로 보이게)
+
+
+# 이상적인 방법(시간 남을 경우 구현) :
+# 1. 장바구니에 트리거를 걸지 않고 rent_list에 걸어서 한 아이디당 5권 이상 대여할 수 없게 처리해야함. (현재는 애초에 장바구니에서 5권 이상 못담게 만들었음)
+=======
 # 2023. 02. 23. 목요일 01:23분
 
 # (이전) 대여 가능 권수 5권으로 제한하는 기능 완료
@@ -16,6 +38,7 @@
 # 1. 도서반납할 때 rent_list가 있을 때, 없을 때를 구분해주기
 # 2. 대여목록에 데이터가 없을 때에도 등록번호 입력하라고 뜨는 거 예외처리 해줘야 함
 # 3. 장바구니 조회하기 메뉴도 따로 만들기
+>>>>>>> origin/master
 
 
 # 트리거 생성은 heidisql에서
@@ -34,6 +57,46 @@
 # DELIMITER ;
 
 import pymysql
+<<<<<<< HEAD
+from time import localtime, strftime
+import unicodedata # 한글이 포함된 문자열에 간격 맞추기 솔루션을 제공하는 라이브러리
+
+
+import unicodedata # 한글이 포함된 문자열에 간격 맞추기 솔루션을 제공하는 라이브러리
+from wcwidth import wcswidth  # 한글이 포함된 문자열에 간격 맞추기 솔루션을 제공하는 라이브러리
+
+
+def preFormat(string, width, align='<', fill=' '):
+    count = (width - sum(1 + (unicodedata.east_asian_width(c) in "WF") for c in string))
+    return {
+        '>': lambda s: fill * count + s, # lambda 매개변수 : 표현식
+        '<': lambda s: s + fill * count,
+        '^': lambda s: fill * (count / 2)
+                       + s
+                       + fill * (count / 2 + count % 2)
+    }[align](string)
+
+
+def fmt(x, w, align='r'): # align의 기본값은 'r : right'
+    """ 동아시아문자 폭을 고려하여, 문자열 포매팅을 해 주는 함수.
+    w 는 해당 문자열과 스페이스문자가 차지하는 너비.
+    align 은 문자열의 수평방향 정렬 좌/우/중간.
+    """
+    x = str(x) # 해당 문자열
+    l = wcswidth(x) # 문자열이 몇자리를 차지하는지를 계산.
+    s = w-l # 남은 너비 = 사용자가 지정한 전체 너비 - 문자열이 차지하는 너비
+    if s <= 0:
+        return x
+    if align == 'l':
+        return x + ' '*s
+    if align == 'c':
+        sl = s//2 # 변수 좌측
+        sr = s - sl # 변수 우측
+        return ' '*sl + x + ' '*sr
+    return ' '*s + x
+
+=======
+>>>>>>> origin/master
 
 num = 0
 promt = """
@@ -47,6 +110,22 @@ check_result = []
 cart_id = 1
 rent_id = 1
 
+<<<<<<< HEAD
+
+def return_rent():  # 도서 반납 함수
+    check_num = 0
+    print("[ 도서 반납하기 ]")
+
+    # rent_list 출력하기
+    conn = pymysql.connect(  # DB 연결
+        host='127.0.0.1', user='root', password='123456',
+        db='book_management', charset='utf8')
+    cursor = conn.cursor()
+
+    #수정중
+    sql = '''    
+        SELECT rent_id, book_num, lib_name, book_name, author, rent_date, return_date
+=======
 def return_rent():  # 도서 반납 함수
     check_num = 0
     print("[ 도서 반납하기 ]")
@@ -58,13 +137,36 @@ def return_rent():  # 도서 반납 함수
 
     sql = '''    
         SELECT *
+>>>>>>> origin/master
         FROM rent_list
         '''
     cursor.execute(sql)
     result = cursor.fetchall()
 
+<<<<<<< HEAD
+    # rent_list에 데이터가 0개일 때
+    if result == ():
+        print("반납할 도서가 없습니다.")
+        return
+
+    strFormat = '%-10s%-20s%-20s%-10s%-10s\n'
+    print(f"대여번호   등록번호    도서관명    도서명    저자                대여일         반납일")
+
+    for i in range(len(result)):
+        print('{} {} {} {} {} {} {}'.format(fmt(str(result[i][0]), 7), preFormat(result[i][1], 20),
+                                            preFormat(result[i][2], 20), preFormat(result[i][3], 20)
+                                            , preFormat(result[i][4], 50),
+                                            preFormat(result[i][5].strftime("%Y-%m-%d"), 10),
+                                            preFormat(result[i][6].strftime("%Y-%m-%d"), 10)))
+
+    # for i in range(len(result)):
+    #     print('{} {} {} {} {} {} {}'.format(preFormat(str(result[i][0]),7), preFormat(result[i][1], 20), preFormat(result[i][2], 20), preFormat(result[i][3], 20)
+    #     ,preFormat(result[i][4], 50), preFormat(result[i][5].strftime("%Y-%m-%d"), 10), preFormat(result[i][6].strftime("%Y-%m-%d"), 10)))
+    #     # print(result[i], end='\n')
+=======
     for i in range(len(result)):
         print(result[i], end='\n')
+>>>>>>> origin/master
 
     print("반납할 도서의 등록번호를 입력하세요 : ")
     user_id = input()
@@ -86,6 +188,11 @@ def return_rent():  # 도서 반납 함수
             UPDATE book_list SET
             borrow = %s WHERE book_num = %s
             '''
+<<<<<<< HEAD
+        print(f"등록번호 : {result[0][1]}, 도서명 : {result[0][3]} 을 반납하였습니다. ")
+
+=======
+>>>>>>> origin/master
         cursor.execute(sql3, ('Y', (user_id)))
         conn.commit()
     else:
@@ -99,12 +206,23 @@ def book_rent(check_result):  # 장바구니에 있는 목록 출력 후 대여�
     # 매개변수 check_result는 현재 로그인된 cust의 정보가 담겨 있음(check_ID(), check_PWD()함수 참고)
     global rent_id
 
+<<<<<<< HEAD
+    cart_check = print_cart()  # 장바구니 목록 출력해주는 함수 호출
+    if cart_check == -1:
+        return
+
+=======
     print_cart()  # 장바구니 목록 출력해주는 함수 호출
+>>>>>>> origin/master
     print("대여할 도서의 등록번호를 입력하세요 : ")
     input_bookid = input()
 
     conn = pymysql.connect(  # DB 연결
+<<<<<<< HEAD
+        host='127.0.0.1', user='root', password='123456',
+=======
         host='127.0.0.1', user='root', password='tnghcjstk5',
+>>>>>>> origin/master
         db='book_management', charset='utf8')
     cursor = conn.cursor()
 
@@ -125,7 +243,11 @@ def book_rent(check_result):  # 장바구니에 있는 목록 출력 후 대여�
     cursor.execute(sql2)
     rent_id = len(cursor.fetchall()) + 1
     print(rent_id)
+<<<<<<< HEAD
+
+=======
     #################################################
+>>>>>>> origin/master
 
     try:
 
@@ -167,6 +289,11 @@ def book_rent(check_result):  # 장바구니에 있는 목록 출력 후 대여�
         conn.close()
 
 
+<<<<<<< HEAD
+def print_cart():  # 장바구니 테이블(cart)을 출력해주는 함수
+    conn = pymysql.connect(  # DB 연결
+        host='127.0.0.1', user='root', password='123456',
+=======
 
 
 
@@ -216,6 +343,7 @@ def book_rent(check_result):  # 장바구니에 있는 목록 출력 후 대여�
 def print_cart():  # 장바구니 테이블(cart)을 출력해주는 함수
     conn = pymysql.connect(  # DB 연결
         host='127.0.0.1', user='root', password='tnghcjstk5',
+>>>>>>> origin/master
         db='book_management', charset='utf8')
     cursor = conn.cursor()
 
@@ -227,12 +355,22 @@ def print_cart():  # 장바구니 테이블(cart)을 출력해주는 함수
     result = cursor.fetchall()
 
     print(f"[ 장바구니 ]")
+<<<<<<< HEAD
+
+    if result == ():
+        print("장바구니에 담긴 도서가 없습니다.")
+        return -1
+
+=======
+>>>>>>> origin/master
     for i in range(len(result)):
         print(result[i], end='\n')
 
     cursor.close()
     conn.close()
 
+<<<<<<< HEAD
+=======
 #############################수정해야함 ########################################
 # def input_cart(user_bookid):  # cart 테이블에 데이터 넣는 함수
 #     global cart_id
@@ -268,6 +406,7 @@ def print_cart():  # 장바구니 테이블(cart)을 출력해주는 함수
 #     cursor.close()
 #     conn.close()
 
+>>>>>>> origin/master
 
 def print_rent():  # 도서를 대여하는 함수 호출         ##
 
@@ -287,6 +426,8 @@ def print_rent():  # 도서를 대여하는 함수 호출         ##
             print("메인화면으로 돌아갑니다.")
             break
 
+<<<<<<< HEAD
+=======
     # rent_user_num = 0
     #
     # while rent_user_num != 3:
@@ -410,6 +551,7 @@ def print_rent():  # 도서를 대여하는 함수 호출         ##
 
 ##############################################################################################################################
 
+>>>>>>> origin/master
 
 ############################################################################################################
 ############################################################################################################
@@ -429,7 +571,11 @@ def print_search():
         if book_list_num == 1:  ##도서명으로 검색
 
             conn = pymysql.connect (  # DB 연결
+<<<<<<< HEAD
+                host='127.0.0.1', user='root', password='123456',
+=======
                 host='127.0.0.1', user='root', password='tnghcjstk5',
+>>>>>>> origin/master
                 db='book_management', charset='utf8')
             cursor = conn.cursor ()
 
@@ -466,7 +612,11 @@ def print_search():
 
             conn = pymysql.connect (  # DB 연결
 
+<<<<<<< HEAD
+                host='127.0.0.1', user='root', password='123456',
+=======
                 host='127.0.0.1', user='root', password='tnghcjstk5',
+>>>>>>> origin/master
 
                 db='book_management', charset='utf8')
 
@@ -505,7 +655,11 @@ def print_search():
 
             conn = pymysql.connect (  # DB 연결
 
+<<<<<<< HEAD
+                host='127.0.0.1', user='root', password='123456',
+=======
                 host='127.0.0.1', user='root', password='tnghcjstk5',
+>>>>>>> origin/master
 
                 db='book_management', charset='utf8')
 
@@ -546,7 +700,11 @@ def print_search():
             if int(cart) == 1:  # borrow가 Y일 때만 카트에 담을 수 있음. 대여 중인데 또 카트에 넣어지는 에러해결
                 try:
                     conn = pymysql.connect (
+<<<<<<< HEAD
+                        host='127.0.0.1', user='root', password='123456',
+=======
                         host='127.0.0.1', user='root', password='tnghcjstk5',
+>>>>>>> origin/master
                         db='book_management', charset='utf8'
                     )
                     cursor = conn.cursor()
@@ -590,12 +748,21 @@ def print_search():
 def print_main(): # 메인 메뉴 출력 함수
     main_user_num = 0
 
+<<<<<<< HEAD
+    while main_user_num != 5:
+=======
     while main_user_num != 4:
+>>>>>>> origin/master
 
         print("1. 도서조회")
         print("2. 도서대여")
         print("3. 도서반납")
+<<<<<<< HEAD
+        print("4. 장바구니 조회")
+        print("5. 뒤로가기")
+=======
         print("4. 뒤로가기")
+>>>>>>> origin/master
         print("Enter number: ")
 
         main_user_num = int(input())
@@ -609,6 +776,11 @@ def print_main(): # 메인 메뉴 출력 함수
         elif main_user_num == 3:
             print("도서반납")
             return_rent()
+<<<<<<< HEAD
+        elif main_user_num == 4:
+            print_cart()
+=======
+>>>>>>> origin/master
         else:
             print("로그아웃 되었습니다.")
             break
@@ -629,7 +801,11 @@ def check_ID(input_id):  # 사용자에게 입력받은 input_id가 DB에 있는
     while check != 1:
 
         conn = pymysql.connect(   # DB 연결
+<<<<<<< HEAD
+            host='127.0.0.1', user='root', password='123456',
+=======
             host='127.0.0.1', user='root', password='tnghcjstk5',
+>>>>>>> origin/master
             db='book_management', charset='utf8')
         cursor = conn.cursor()
 
@@ -676,7 +852,11 @@ def join_member():   # 회원가입하는 함수
     while check != 1:
 
         conn = pymysql.connect(  # DB 연결
+<<<<<<< HEAD
+            host='127.0.0.1', user='root', password='123456',
+=======
             host='127.0.0.1', user='root', password='tnghcjstk5',
+>>>>>>> origin/master
             db='book_management', charset='utf8')
         cursor = conn.cursor()
 

@@ -1,5 +1,6 @@
 # 2023. 02. 23. 목요일 17:07분  - 중간저장
 
+<<<<<<< HEAD
 # (이전) 대여 가능 권수 5권으로 제한하는 기능 완료
 # (이전) cart 수정 => 각종 에러, borrow 출력
 # (이전) 대여 수정
@@ -20,6 +21,8 @@
 # 1. 장바구니에 트리거를 걸지 않고 rent_list에 걸어서 한 아이디당 5권 이상 대여할 수 없게 처리해야함. (현재는 애초에 장바구니에서 5권 이상 못담게 만들었음)
 
 
+=======
+>>>>>>> origin/master
 # 트리거 생성은 heidisql에서
 # 트리거 생성 쿼리문!
 # DELIMITER //
@@ -198,7 +201,11 @@ def print_cart():  # 장바구니 테이블(cart)을 출력해주는 함수
     print(f"[ 장바구니 ]")
 
     if result == ():
+<<<<<<< HEAD
         print("장바구니에 담긴 도서가 없습니다EM0000074144.")
+=======
+        print("장바구니에 담긴 도서가 없습니다.")
+>>>>>>> origin/master
         return -1
 
     for i in range(len(result)):
@@ -382,8 +389,11 @@ def print_search():
                         print("중복된 등록번호입니다. 다른 책을 장바구니에 넣어주세요")
                     if err.args[0] == 1644:
                         print("대여 가능한 권수를 초과하였습니다. (1인 최대 5권 대여 가능)")
+<<<<<<< HEAD
                     else:
                         print(err)
+=======
+>>>>>>> origin/master
                     continue
 
                 finally:
